@@ -52,15 +52,13 @@ __kernel void sha256(const __global uchar *src, __global uchar *dst)
 
   uchar buffer[64] = {0};
 
-  for (int j=0; j<8; ++j) {
-    uchar4 v = vload4(0, &src[(i*8+j)*4]);
-    buffer[4*j+0] = v.x;
-    buffer[4*j+1] = v.y;
-    buffer[4*j+2] = v.z;
-    buffer[4*j+3] = v.w;
+  for (int j=0; j<32; ++j) {
+    buffer[j] = src[i*32+j];
   }
+
   // stop bits
   buffer[32] = 0x80;
+
   // size
   buffer[62] = 0x1;
 

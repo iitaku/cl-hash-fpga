@@ -43,9 +43,6 @@ std::string format(const char *fmt, ...)
   return s;
 }
 
-
-
-
 std::vector<char> load(const char *path, std::ios_base::openmode mode=std::ios_base::in)
 {
   std::ifstream ifs(path, mode);
@@ -141,10 +138,10 @@ int main(int argc, char *argv[])
 
     for (int i=0; i<size/32; ++i) {
       std::stringstream ss;
-      ss << format("%d: 0x", i);
       for (int j=0; j<32; ++j) {
         ss << format("%02x", h_dst_ptr[i*32+j]);
       }
+      ss << "  " << i;
       std::cout << ss.str() << std::endl;
     }
 
@@ -152,13 +149,7 @@ int main(int argc, char *argv[])
     queue.enqueueUnmapMemObject(h_dst, h_dst_ptr);
 
   } catch (const cl::Error& e) {
-    std::cerr
-      << "OpenCL error: "
-      << e.what()
-      << "("
-      << e.err()
-      << ")"
-      << std::endl;
+    std::cerr << format("OpenCL error: %s (%d)", e.what(), e.err()) << std::endl;
     return EXIT_FAILURE;
   } catch (const std::runtime_error& e) {
     std::cerr << "Runtime error: " << e.what() << std::endl;
