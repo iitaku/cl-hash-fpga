@@ -30,3 +30,6 @@
 # User defined era
 build
 .*.swp
+*.aocx
+*.aoco
+sha

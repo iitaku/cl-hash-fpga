@@ -1,10 +1,6 @@
 #define __CL_ENABLE_EXCEPTIONS
 
-#if defined(__APPLE__) || defined(__MACOSX)
-#include <OpenCL/cl.hpp>
-#else
 #include <CL/cl.hpp>
-#endif
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -19,11 +15,7 @@ std::string format(const char *fmt, ...)
   {
     va_list ap;
     va_start(ap, fmt);
-#if defined(_MSC_VER)
-	length = _vscprintf(fmt, ap);
-#else
     length = vsnprintf(NULL, 0, fmt, ap);
-#endif
     va_end(ap);
   }
 
@@ -31,11 +23,7 @@ std::string format(const char *fmt, ...)
   {
     va_list ap;
     va_start(ap, fmt);
-#if defined(_MSC_VER)
-    vsnprintf_s(&buf[0], length, _TRUNCATE, fmt, ap);
-#else
     vsprintf(&buf[0], fmt, ap);
-#endif
     va_end(ap);
   }
 
@@ -80,23 +68,36 @@ int main(int argc, char *argv[])
     if (platforms.empty()) {
       throw std::runtime_error("no OpenCL platforms");
     }
+    cl::Platform platform(platforms[0]);
+    std::cout << platform.getInfo<CL_PLATFORM_NAME>() << std::endl;
 
     cl_context_properties properties[] = {
-      CL_CONTEXT_PLATFORM, (cl_context_properties)(platforms[0])(),
+      CL_CONTEXT_PLATFORM, (cl_context_properties)(platform)(),
       0
     };
     cl::Context context(CL_DEVICE_TYPE_ALL, properties);
 
     std::vector<cl::Device> devices(context.getInfo<CL_CONTEXT_DEVICES>());
-    cl::CommandQueue queue(context, devices[0], 0);
+    cl::Device device(devices[0]);
+    std::cout << device.getInfo<CL_DEVICE_NAME>() << std::endl;
 
-    std::vector<char> source_buf(load("../sha.cl"));
-    cl::Program::Sources source(1, std::make_pair(&source_buf[0], source_buf.size()));
-    cl::Program program(context, source);
+    cl::CommandQueue queue(context, device, 0);
+
+    cl::Program program;
+    if (platform.getInfo<CL_PLATFORM_VENDOR>() == "Altera Corporation") {
+      std::vector<char> binary_buf(load("../sha.aocx", std::ios_base::binary));
+      cl::Program::Binaries binary(1, std::make_pair(&binary_buf[0], binary_buf.size()));
+      program = cl::Program(context, devices, binary);
+    } else {
+      std::vector<char> source_buf(load("../sha.cl"));
+      cl::Program::Sources source(1, std::make_pair(&source_buf[0], source_buf.size()));
+      program = cl::Program(context, source);
+    }
+
     try {
       program.build(devices);
     } catch (cl::Error& e) {
-      std::string log(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]));
+      std::string log(program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device));
       std::cerr << log << std::endl;
       throw;
     }

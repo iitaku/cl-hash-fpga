@@ -31,7 +31,7 @@ uchar4 scatter_in_be(uint v) {
   return (uchar4)((v & 0xFF000000) >> 24, (v & 0x00FF0000) >> 16, (v & 0x0000FF00) >> 8, (v & 0x000000FF) >> 0);
 }
 
-__kernel void sha256(const __global uchar *src, __global uchar *dst)
+__kernel void sha256(const __global uchar * restrict src, __global uchar * restrict dst)
 {
   const uint i = get_global_id(0);
 
@@ -52,6 +52,7 @@ __kernel void sha256(const __global uchar *src, __global uchar *dst)
 
   uchar buffer[64] = {0};
 
+  #pragma unroll
   for (int j=0; j<32; ++j) {
     buffer[j] = src[i*32+j];
   }
@@ -65,11 +66,13 @@ __kernel void sha256(const __global uchar *src, __global uchar *dst)
   uint ws[64] = {0};
 
   // copy first 16 element
+  #pragma unroll
   for (int j=0; j<16; ++j) {
     ws[j] = gather_in_be((uchar4)(buffer[4*j+0], buffer[4*j+1], buffer[4*j+2], buffer[4*j+3]));
   }
 
   // extend left 48 elements
+  #pragma unroll
   for (int j=16; j<64; ++j) {
     const uint s0 = rotate_right(ws[j-15],  7) ^ rotate_right(ws[j-15], 18) ^ (ws[j-15] >>  3);
     const uint s1 = rotate_right(ws[j- 2], 17) ^ rotate_right(ws[j- 2], 19) ^ (ws[j- 2] >> 10);
@@ -85,6 +88,7 @@ __kernel void sha256(const __global uchar *src, __global uchar *dst)
   uint g = hs[6];
   uint h = hs[7];
 
+  #pragma unroll
   for (int j=0; j<64; ++j) {
 
     const uint s1 = rotate_right(e, 6) ^ rotate_right(e, 11) ^ rotate_right(e, 25);
@@ -113,6 +117,7 @@ __kernel void sha256(const __global uchar *src, __global uchar *dst)
   hs[6] += g;
   hs[7] += h;
 
+  #pragma unroll
   for (int j=0; j<8; ++j) {
     uchar4 v = scatter_in_be(hs[j]);
     vstore4(v, 0, &dst[(i*8+j)*4]);
